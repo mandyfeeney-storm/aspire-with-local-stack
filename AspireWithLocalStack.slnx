@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="AspireWithLocalStack.Api/AspireWithLocalStack.Api.csproj" />
+  <Project Path="AspireWithLocalStack.AppHost/AspireWithLocalStack.AppHost.csproj" />
+</Solution>
