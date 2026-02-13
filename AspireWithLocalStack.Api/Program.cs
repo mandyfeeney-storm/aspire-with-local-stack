@@ -1,22 +1,11 @@
 using Amazon.S3;
 using Amazon.S3.Model;
-using LocalStack.Client.Extensions;
+using AspireWithLocalStack.Api;
 using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var localStackConnectionString = builder.Configuration.GetConnectionString("localstack");
-if (!string.IsNullOrEmpty(localStackConnectionString))
-{
-    var uri = new Uri(localStackConnectionString);
-    
-    builder.Configuration["LocalStack:Config:LocalStackHost"] = uri.Host;
-    builder.Configuration["LocalStack:Config:EdgePort"] = uri.Port.ToString();
-}
-
-builder.Services.AddLocalStack(builder.Configuration);
-builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
-builder.Services.AddAwsService<IAmazonS3>();
+builder.Services.AddAwsServices(builder.Configuration, builder.Environment);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
