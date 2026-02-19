@@ -19,7 +19,7 @@ if (useLocalStack)
     localstack = builder.AddLocalStack(awsConfig: awsConfig,
         configureContainer: container =>
         {
-            container.EagerLoadedServices = [AwsService.S3, AwsService.Sqs];
+            container.EagerLoadedServices = [AwsService.S3, AwsService.Sqs, AwsService.Sns];
             container.Lifetime = ContainerLifetime.Persistent;
             container.DebugLevel = 1;
             container.LogLevel = LocalStackLogLevel.Debug;

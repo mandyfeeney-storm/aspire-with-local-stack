@@ -12,42 +12,42 @@ public static class SqsEndpoints
         var group = app.MapGroup("/")
             .WithTags("SQS Messaging");
 
-        // List all queues
+        // ========== Queue Management ==========
+
         group.MapGet("/queues", ListQueues)
             .WithName("ListQueues")
             .WithDescription("Lists all SQS queues");
-
-        // Create a queue
+        
         group.MapPost("/queues", CreateQueue)
             .WithName("CreateQueue")
             .WithDescription("Creates a new SQS queue");
-
-        // Send a message to a queue
-        group.MapPost("/queues/{queueName}/messages", SendMessage)
-            .WithName("SendMessage")
-            .WithDescription("Sends a message to the specified queue");
-
-        // Receive messages from a queue
-        group.MapGet("/queues/{queueName}/messages", ReceiveMessages)
-            .WithName("ReceiveMessages")
-            .WithDescription("Receives messages from the specified queue");
-
-        // Delete a message from a queue
-        group.MapDelete("/queues/{queueName}/messages/{receiptHandle}", DeleteMessage)
-            .WithName("DeleteMessage")
-            .WithDescription("Deletes a message from the queue using its receipt handle");
-
-        // Purge all messages from a queue
-        group.MapDelete("/queues/{queueName}/messages", PurgeQueue)
-            .WithName("PurgeQueue")
-            .WithDescription("Purges all messages from the specified queue");
-
-        // Delete a queue
+        
         group.MapDelete("/queues/{queueName}", DeleteQueue)
             .WithName("DeleteQueue")
             .WithDescription("Deletes the specified queue");
 
-        // Health check
+        // ========== Sending and Receiving Messages ==========
+
+        group.MapPost("/queues/{queueName}/messages", SendMessage)
+            .WithName("SendMessage")
+            .WithDescription("Sends a message to the specified queue");
+
+        group.MapGet("/queues/{queueName}/messages", ReceiveMessages)
+            .WithName("ReceiveMessages")
+            .WithDescription("Receives messages from the specified queue");
+
+        // ========== Deleting Messages ==========
+
+        group.MapDelete("/queues/{queueName}/messages/{receiptHandle}", DeleteMessage)
+            .WithName("DeleteMessage")
+            .WithDescription("Deletes a message from the queue using its receipt handle");
+
+        group.MapDelete("/queues/{queueName}/messages", PurgeQueue)
+            .WithName("PurgeQueue")
+            .WithDescription("Purges all messages from the specified queue");
+
+        // ========== Health Check ==========
+
         group.MapGet("queues/health", HealthCheck)
             .WithName("SQSHealthCheck")
             .WithDescription("Checks connectivity to SQS/LocalStack");

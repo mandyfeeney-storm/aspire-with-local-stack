@@ -31,5 +31,6 @@ app.UseCors();
 
 app.MapS3Endpoints();
 app.MapSqsEndpoints();
+app.MapSnsEndpoints();
 
 app.Run();

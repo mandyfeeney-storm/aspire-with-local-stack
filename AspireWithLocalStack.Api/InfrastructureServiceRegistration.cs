@@ -1,4 +1,5 @@
 using Amazon.S3;
+using Amazon.SimpleNotificationService;
 using Amazon.SQS;
 using LocalStack.Client.Extensions;
 
@@ -17,6 +18,7 @@ public static class InfrastructureServiceRegistration
         // Add individual AWS services
         services.AddS3Storage(useLocalStack);
         services.AddSqsMessaging(useLocalStack);
+        services.AddSnsMessaging(useLocalStack);
         
         return services;
     }
@@ -86,6 +88,24 @@ public static class InfrastructureServiceRegistration
         {
             services.AddAWSService<IAmazonSQS>();
             Console.WriteLine("[SQS Messaging] Using real AWS");
+        }
+        
+        return services;
+    }
+    
+    private static IServiceCollection AddSnsMessaging(
+        this IServiceCollection services,
+        bool useLocalStack)
+    {
+        if (useLocalStack)
+        {
+            services.AddAwsService<IAmazonSimpleNotificationService>();
+            Console.WriteLine("[SNS Messaging] - Using LocalStack");
+        }
+        else
+        {
+            services.AddAWSService<IAmazonSimpleNotificationService>();
+            Console.WriteLine("[SNS Messaging] Using real AWS");
         }
         
         return services;

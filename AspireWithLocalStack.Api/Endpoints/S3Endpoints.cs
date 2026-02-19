@@ -10,59 +10,54 @@ public static class S3Endpoints
     {
         var group = app.MapGroup("/")
             .WithTags("S3 Storage");
-
-        // List all buckets
+        
+        // ========== Bucket Management ==========
+        
         group.MapGet("/buckets", ListBuckets)
             .WithName("ListBuckets")
             .WithDescription("Lists all S3 buckets");
 
-        // Create a bucket
         group.MapPost("/buckets", CreateBucket)
             .WithName("CreateBucket")
             .WithDescription("Creates a new S3 bucket with the specified name");
 
-        // Delete a bucket
         group.MapDelete("/buckets/{bucketName}", DeleteBucket)
             .WithName("DeleteBucket")
             .WithDescription("Deletes an empty S3 bucket");
 
-        // Upload a file
+        // ========== File Operations ==========
+        
         group.MapPost("/buckets/{bucketName}/files/upload", UploadFile)
             .WithName("UploadFile")
             .DisableAntiforgery()
             .WithDescription("Uploads a file to the specified S3 bucket");
 
-        // Upload text content
         group.MapPost("/buckets/{bucketName}/files/upload-text", UploadTextFile)
             .WithName("UploadTextFile")
             .WithDescription("Uploads text content as a file to the specified S3 bucket");
 
-        // List all files in a bucket
         group.MapGet("/buckets/{bucketName}/files", ListFiles)
             .WithName("ListFiles")
             .WithDescription("Lists all files in the specified bucket");
 
-        // Download a file
         group.MapGet("/buckets/{bucketName}/files/{fileName}", DownloadFile)
             .WithName("DownloadFile")
             .WithDescription("Downloads a file from the specified S3 bucket");
 
-        // Get file metadata
         group.MapGet("/buckets/{bucketName}/files/{fileName}/metadata", GetFileMetadata)
             .WithName("GetFileMetadata")
             .WithDescription("Gets metadata for a file without downloading it");
-
-        // Delete all files in a bucket
+        
         group.MapDelete("/buckets/{bucketName}/files", DeleteAllFiles)
             .WithName("DeleteAllFiles")
             .WithDescription("Deletes all files from the specified S3 bucket");
 
-        // Delete a file
         group.MapDelete("/buckets/{bucketName}/files/{fileName}", DeleteFile)
             .WithName("DeleteFile")
             .WithDescription("Deletes a file from the specified S3 bucket");
 
-        // Health check
+        // ========== Health Check ==========
+
         group.MapGet("buckets/health", HealthCheck)
             .WithName("S3HealthCheck")
             .WithDescription("Checks connectivity to S3/LocalStack");
