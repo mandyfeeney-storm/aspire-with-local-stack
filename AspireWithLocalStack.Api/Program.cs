@@ -1,5 +1,7 @@
 using Amazon.S3;
 using Amazon.S3.Model;
+using Amazon.SQS;
+using Amazon.SQS.Model;
 using AspireWithLocalStack.Api;
 using Microsoft.OpenApi;
 
@@ -10,7 +12,7 @@ builder.Services.AddAwsServices(builder.Configuration, builder.Environment);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "S3 Demo API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "AWS Demo API", Version = "v1" });
 });
 
 builder.Services.AddCors(options =>
@@ -30,8 +32,14 @@ app.UseSwaggerUI();
 
 app.UseCors();
 
+var s3Group = app.MapGroup("/")
+    .WithTags("S3 Storage");
+
+var sqsGroup = app.MapGroup("/")
+    .WithTags("SQS Messaging");
+
 // Endpoint: List all buckets
-app.MapGet("/buckets", async (IAmazonS3 s3Client) =>
+s3Group.MapGet("/buckets", async (IAmazonS3 s3Client) =>
 {
     try
     {
@@ -54,7 +62,7 @@ app.MapGet("/buckets", async (IAmazonS3 s3Client) =>
 .WithDescription("Lists all S3 buckets");
 
 // Endpoint: Create a bucket
-app.MapPost("/buckets/create", async (CreateBucketRequest request, IAmazonS3 s3Client) =>
+s3Group.MapPost("/buckets", async (CreateBucketRequest request, IAmazonS3 s3Client) =>
 {
     if (string.IsNullOrWhiteSpace(request.BucketName))
     {
@@ -85,7 +93,7 @@ app.MapPost("/buckets/create", async (CreateBucketRequest request, IAmazonS3 s3C
 .WithDescription("Creates a new S3 bucket with the specified name");
 
 // Endpoint: Delete a bucket
-app.MapDelete("/buckets/{bucketName}", async (string bucketName, IAmazonS3 s3Client) =>
+s3Group.MapDelete("/buckets/{bucketName}", async (string bucketName, IAmazonS3 s3Client) =>
 {
     try
     {
@@ -117,7 +125,7 @@ app.MapDelete("/buckets/{bucketName}", async (string bucketName, IAmazonS3 s3Cli
 .WithDescription("Deletes an empty S3 bucket");
 
 // Endpoint: Upload a file
-app.MapPost("/buckets/{bucketName}/files/upload", async (string bucketName, HttpRequest request, IAmazonS3 s3Client) =>
+s3Group.MapPost("/buckets/{bucketName}/files/upload", async (string bucketName, HttpRequest request, IAmazonS3 s3Client) =>
 {
     if (!request.HasFormContentType || request.Form.Files.Count == 0)
     {
@@ -155,7 +163,7 @@ app.MapPost("/buckets/{bucketName}/files/upload", async (string bucketName, Http
 .WithDescription("Uploads a file to the specified S3 bucket");
 
 // Endpoint: Upload text content
-app.MapPost("/buckets/{bucketName}/files/upload-text", async (string bucketName, string fileName, string content, IAmazonS3 s3Client) =>
+s3Group.MapPost("/buckets/{bucketName}/files/upload-text", async (string bucketName, string fileName, string content, IAmazonS3 s3Client) =>
 {
     if (string.IsNullOrWhiteSpace(fileName) || string.IsNullOrWhiteSpace(content))
     {
@@ -186,7 +194,7 @@ app.MapPost("/buckets/{bucketName}/files/upload-text", async (string bucketName,
 .WithDescription("Uploads text content as a file to the specified S3 bucket");
 
 // Endpoint: List all files in a bucket
-app.MapGet("/buckets/{bucketName}/files", async (string bucketName, IAmazonS3 s3Client) =>
+s3Group.MapGet("/buckets/{bucketName}/files", async (string bucketName, IAmazonS3 s3Client) =>
 {
     try
     {
@@ -223,7 +231,7 @@ app.MapGet("/buckets/{bucketName}/files", async (string bucketName, IAmazonS3 s3
 .WithDescription("Lists all files in the specified bucket");
 
 // Endpoint: Download a file
-app.MapGet("/buckets/{bucketName}/files/{fileName}", async (string bucketName, string fileName, IAmazonS3 s3Client) =>
+s3Group.MapGet("/buckets/{bucketName}/files/{fileName}", async (string bucketName, string fileName, IAmazonS3 s3Client) =>
 {
     try
     {
@@ -239,7 +247,7 @@ app.MapGet("/buckets/{bucketName}/files/{fileName}", async (string bucketName, s
 .WithDescription("Downloads a file from the specified S3 bucket");
 
 // Endpoint: Get file metadata
-app.MapGet("/buckets/{bucketName}/files/{fileName}/metadata", async (string bucketName, string fileName, IAmazonS3 s3Client) =>
+s3Group.MapGet("/buckets/{bucketName}/files/{fileName}/metadata", async (string bucketName, string fileName, IAmazonS3 s3Client) =>
 {
     try
     {
@@ -264,7 +272,7 @@ app.MapGet("/buckets/{bucketName}/files/{fileName}/metadata", async (string buck
 .WithDescription("Gets metadata for a file without downloading it");
 
 // Endpoint: Delete all files in a bucket
-app.MapDelete("/buckets/{bucketName}/files", async (string bucketName, IAmazonS3 s3Client) =>
+s3Group.MapDelete("/buckets/{bucketName}/files", async (string bucketName, IAmazonS3 s3Client) =>
 {
     try
     {
@@ -344,7 +352,7 @@ app.MapDelete("/buckets/{bucketName}/files", async (string bucketName, IAmazonS3
 .WithDescription("Deletes all files from the specified S3 bucket");
 
 // Endpoint: Delete a file
-app.MapDelete("/buckets/{bucketName}/files/{fileName}", async (string bucketName, string fileName, IAmazonS3 s3Client) =>
+s3Group.MapDelete("/buckets/{bucketName}/files/{fileName}", async (string bucketName, string fileName, IAmazonS3 s3Client) =>
 {
     try
     {
@@ -360,21 +368,257 @@ app.MapDelete("/buckets/{bucketName}/files/{fileName}", async (string bucketName
 .WithDescription("Deletes a file from the specified S3 bucket");
 
 // Health check endpoint
-app.MapGet("/health", async (IAmazonS3 s3Client) =>
+s3Group.MapGet("buckets/health", async (IAmazonS3 s3Client) =>
 {
     try
     {
         // Try to list buckets to verify S3 connectivity
         await s3Client.ListBucketsAsync();
-        return Results.Ok(new { Status = "Healthy", Service = "S3", Message = "Connected to LocalStack S3" });
+        return Results.Ok(new { Status = "Healthy", Service = "S3", Message = "Connected to S3/LocalStack" });
     }
     catch (Exception ex)
     {
         return Results.Problem($"S3 connection failed: {ex.Message}");
     }
 })
-.WithName("HealthCheck")
+.WithName("S3HealthCheck")
 .WithDescription("Checks connectivity to S3/LocalStack");
+
+// ==================== SQS Endpoints ====================
+
+// Endpoint: List all queues
+sqsGroup.MapGet("/queues", async (IAmazonSQS sqsClient) =>
+{
+    try
+    {
+        var response = await sqsClient.ListQueuesAsync(new ListQueuesRequest());
+        
+        if (response?.QueueUrls == null || response.QueueUrls.Count == 0)
+        {
+            return Results.Ok(new { Message = "No queues found", Queues = Array.Empty<string>() });
+        }
+        
+        return Results.Ok(new { Queues = response.QueueUrls });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Error listing queues: {ex.Message}");
+    }
+})
+.WithName("ListQueues")
+.WithDescription("Lists all SQS queues");
+
+// Endpoint: Create a queue
+sqsGroup.MapPost("/queues", async (CreateQueueRequest request, IAmazonSQS sqsClient) =>
+{
+    if (string.IsNullOrWhiteSpace(request.QueueName))
+    {
+        return Results.BadRequest(new { Message = "QueueName is required" });
+    }
+
+    try
+    {
+        var response = await sqsClient.CreateQueueAsync(request.QueueName);
+        return Results.Created($"/queues/{request.QueueName}", new 
+        { 
+            Message = $"Queue '{request.QueueName}' created successfully", 
+            response.QueueUrl 
+        });
+    }
+    catch (QueueNameExistsException)
+    {
+        // Queue already exists - get its URL
+        var urlResponse = await sqsClient.GetQueueUrlAsync(request.QueueName);
+        return Results.Ok(new 
+        { 
+            Message = $"Queue '{request.QueueName}' already exists", 
+            urlResponse.QueueUrl 
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Error creating queue: {ex.Message}");
+    }
+})
+.WithName("CreateQueue")
+.WithDescription("Creates a new SQS queue");
+
+// Endpoint: Send a message to a queue
+sqsGroup.MapPost("/queues/{queueName}/messages", async (string queueName, AddMessageToQueueRequest request, IAmazonSQS sqsClient) =>
+{
+    if (string.IsNullOrWhiteSpace(request.MessageBody))
+    {
+        return Results.BadRequest(new { Message = "MessageBody is required" });
+    }
+
+    try
+    {
+        var queueUrlResponse = await sqsClient.GetQueueUrlAsync(queueName);
+        var response = await sqsClient.SendMessageAsync(new SendMessageRequest
+        {
+            QueueUrl = queueUrlResponse.QueueUrl,
+            MessageBody = request.MessageBody
+        });
+        
+        return Results.Ok(new 
+        { 
+            Message = "Message sent successfully",
+            response.MessageId,
+            QueueName = queueName
+        });
+    }
+    catch (QueueDoesNotExistException)
+    {
+        return Results.NotFound(new { Message = $"Queue '{queueName}' does not exist" });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Error sending message: {ex.Message}");
+    }
+})
+.WithName("SendMessage")
+.WithDescription("Sends a message to the specified queue");
+
+// Endpoint: Receive messages from a queue
+sqsGroup.MapGet("/queues/{queueName}/messages", async (string queueName, IAmazonSQS sqsClient, int maxMessages = 10) =>
+{
+    try
+    {
+        var queueUrlResponse = await sqsClient.GetQueueUrlAsync(queueName);
+        
+        var response = await sqsClient.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrlResponse.QueueUrl,
+            MaxNumberOfMessages = Math.Min(maxMessages, 10), // AWS max is 10
+            WaitTimeSeconds = 5, // Long polling
+            MessageAttributeNames = ["All"],
+            MessageSystemAttributeNames = ["All"]
+        });
+        
+        if (response?.Messages == null || response.Messages.Count == 0)
+        {
+            return Results.Ok(new { Message = "No messages available", Messages = Array.Empty<object>() });
+        }
+        
+        var messages = response.Messages.Select(m => new
+        {
+            m.MessageId,
+            m.Body,
+            m.ReceiptHandle,
+            m.Attributes
+        });
+        
+        return Results.Ok(new { response.Messages.Count, Messages = messages });
+    }
+    catch (QueueDoesNotExistException)
+    {
+        return Results.NotFound(new { Message = $"Queue '{queueName}' does not exist" });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Error receiving messages: {ex.Message}");
+    }
+})
+.WithName("ReceiveMessages")
+.WithDescription("Receives messages from the specified queue");
+
+// Endpoint: Delete a message from a queue
+sqsGroup.MapDelete("/queues/{queueName}/messages/{receiptHandle}", async (string queueName, string receiptHandle, IAmazonSQS sqsClient) =>
+{
+    try
+    {
+        var queueUrlResponse = await sqsClient.GetQueueUrlAsync(queueName);
+        
+        await sqsClient.DeleteMessageAsync(new DeleteMessageRequest
+        {
+            QueueUrl = queueUrlResponse.QueueUrl,
+            ReceiptHandle = receiptHandle
+        });
+        
+        return Results.Ok(new { Message = "Message deleted successfully" });
+    }
+    catch (ReceiptHandleIsInvalidException)
+    {
+        return Results.BadRequest(new { Message = "Invalid receipt handle" });
+    }
+    catch (QueueDoesNotExistException)
+    {
+        return Results.NotFound(new { Message = $"Queue '{queueName}' does not exist" });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Error deleting message: {ex.Message}");
+    }
+})
+.WithName("DeleteMessage")
+.WithDescription("Deletes a message from the queue using its receipt handle");
+
+// Endpoint: Purge all messages from a queue
+sqsGroup.MapDelete("/queues/{queueName}/messages", async (string queueName, IAmazonSQS sqsClient) =>
+{
+    try
+    {
+        var queueUrlResponse = await sqsClient.GetQueueUrlAsync(queueName);
+        
+        await sqsClient.PurgeQueueAsync(queueUrlResponse.QueueUrl);
+        
+        return Results.Ok(new { Message = $"All messages purged from queue '{queueName}'" });
+    }
+    catch (QueueDoesNotExistException)
+    {
+        return Results.NotFound(new { Message = $"Queue '{queueName}' does not exist" });
+    }
+    catch (PurgeQueueInProgressException)
+    {
+        return Results.Conflict(new { Message = "Purge already in progress. Wait 60 seconds before purging again." });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Error purging queue: {ex.Message}");
+    }
+})
+.WithName("PurgeQueue")
+.WithDescription("Purges all messages from the specified queue");
+
+// Endpoint: Delete a queue
+sqsGroup.MapDelete("/queues/{queueName}", async (string queueName, IAmazonSQS sqsClient) =>
+{
+    try
+    {
+        var queueUrlResponse = await sqsClient.GetQueueUrlAsync(queueName);
+        
+        await sqsClient.DeleteQueueAsync(queueUrlResponse.QueueUrl);
+        
+        return Results.Ok(new { Message = $"Queue '{queueName}' deleted successfully" });
+    }
+    catch (QueueDoesNotExistException)
+    {
+        return Results.NotFound(new { Message = $"Queue '{queueName}' does not exist" });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Error deleting queue: {ex.Message}");
+    }
+})
+.WithName("DeleteQueue")
+.WithDescription("Deletes the specified queue");
+
+sqsGroup.MapGet("queues/health", async (IAmazonSQS sqsClient) =>
+    {
+        try
+        {
+            // Try to list queues to verify SQS connectivity
+            await sqsClient.ListQueuesAsync(new ListQueuesRequest());
+            return Results.Ok(new { Status = "Healthy", Service = "SQS", Message = "Connected to SQS/LocalStack" });
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem($"SQS connection failed: {ex.Message}");
+        }
+    })
+    .WithName("SQSHealthCheck")
+    .WithDescription("Checks connectivity to SQS/LocalStack");
+
 
 app.Run();
 
@@ -397,7 +641,7 @@ static bool IsValidBucketName(string bucketName)
     if (string.IsNullOrWhiteSpace(bucketName) || bucketName.Length < 3 || bucketName.Length > 63)
         return false;
 
-    // Must start with lowercase letter or number
+    // Must start with a lowercase letter or number
     if (!char.IsLetterOrDigit(bucketName[0]) || char.IsUpper(bucketName[0]))
         return false;
 
@@ -405,4 +649,7 @@ static bool IsValidBucketName(string bucketName)
     return bucketName.All(c => char.IsLower(c) || char.IsDigit(c) || c == '.' || c == '-');
 }
 
+// Request models
 record CreateBucketRequest(string BucketName);
+record CreateQueueRequest(string QueueName);
+record AddMessageToQueueRequest(string MessageBody);
